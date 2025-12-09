@@ -2,6 +2,7 @@
 Icon generation endpoints
 """
 
+import asyncio
 from fastapi import APIRouter, HTTPException, Path, status, BackgroundTasks
 from app.models.generation import (
     GenerateConceptRequest,
@@ -11,6 +12,8 @@ from app.models.generation import (
     GenerationStatusEnum
 )
 from app.core.logging import logger
+from app.core.task_store import task_store
+from app.workers.youtube_worker import process_youtube_generation
 import uuid
 from datetime import datetime
 
@@ -41,6 +44,13 @@ async def generate_from_concept(
         task_id = f"gen_{uuid.uuid4().hex[:12]}"
 
         logger.info(f"Creating generation task {task_id} for concept: {request.concept}")
+
+        # Create task in store
+        task_store.create_task(
+            task_id=task_id,
+            source_type="concept",
+            source_data={"concept": request.concept}
+        )
 
         # TODO: Add background task for actual generation
         # background_tasks.add_task(process_concept_generation, task_id, request)
@@ -85,8 +95,25 @@ async def generate_from_youtube(
 
         logger.info(f"Creating YouTube generation task {task_id} for URL: {request.youtube_url}")
 
-        # TODO: Add background task for YouTube processing
-        # background_tasks.add_task(process_youtube_generation, task_id, request)
+        # Create task in store
+        task_store.create_task(
+            task_id=task_id,
+            source_type="youtube",
+            source_data={
+                "youtube_url": request.youtube_url,
+                "max_concepts": request.max_concepts,
+                "auto_generate": request.auto_generate
+            }
+        )
+
+        # Launch background task
+        background_tasks.add_task(
+            process_youtube_generation,
+            task_id=task_id,
+            youtube_url=request.youtube_url,
+            max_concepts=request.max_concepts,
+            auto_generate=request.auto_generate
+        )
 
         estimated_time = request.max_concepts * 3 if request.auto_generate else 30
 
@@ -121,19 +148,34 @@ async def get_generation_status(
     - **task_id**: Task identifier returned from generation request
     """
     try:
-        # TODO: Query task status from database/cache
         logger.info(f"Checking status for task: {task_id}")
 
-        # Return mock status for now
+        # Get task from store
+        task_data = task_store.get_task(task_id)
+
+        if not task_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Task {task_id} not found"
+            )
+
+        # Return task status
         return GenerationStatus(
-            task_id=task_id,
-            status=GenerationStatusEnum.PENDING,
-            progress=0,
-            message="Task is in queue",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            task_id=task_data["task_id"],
+            status=task_data["status"],
+            progress=task_data["progress"],
+            message=task_data.get("message"),
+            created_at=task_data["created_at"],
+            updated_at=task_data["updated_at"],
+            completed_at=task_data.get("completed_at"),
+            error=task_data.get("error"),
+            transcript=task_data.get("transcript"),
+            extracted_concepts=task_data.get("extracted_concepts"),
+            generated_icons=task_data.get("generated_icons")
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting task status {task_id}: {str(e)}")
         raise HTTPException(

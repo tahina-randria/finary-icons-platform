@@ -56,7 +56,7 @@ class YouTubeService:
         self,
         youtube_url: str,
         languages: list[str] = ['fr', 'en']
-    ) -> Dict[str, Any]:
+    ) -> list:
         """
         Get transcript from YouTube video
 
@@ -65,7 +65,7 @@ class YouTubeService:
             languages: Preferred languages (in order)
 
         Returns:
-            Dict with video_id, transcript, and metadata
+            List of transcript segments with text, start, and duration
         """
         try:
             # Extract video ID
@@ -75,48 +75,42 @@ class YouTubeService:
 
             logger.info(f"Fetching transcript for video: {video_id}")
 
-            # Get transcript
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # Create API instance
+            api = YouTubeTranscriptApi()
 
-            # Try to get transcript in preferred languages
-            transcript = None
+            # Try to fetch transcript in preferred languages
+            transcript_data = None
             language_used = None
 
-            for lang in languages:
+            try:
+                transcript_data = api.fetch(video_id, languages=languages)
+                language_used = languages[0]
+                logger.info(f"Got transcript in preferred languages")
+            except Exception as e:
+                logger.warning(f"Could not get transcript in {languages}: {str(e)}")
+                # Try without language specification (auto-detect)
                 try:
-                    transcript = transcript_list.find_transcript([lang])
-                    language_used = lang
-                    break
-                except:
-                    continue
+                    transcript_data = api.fetch(video_id)
+                    language_used = "auto"
+                    logger.info("Got auto-detected transcript")
+                except Exception as e2:
+                    raise Exception(f"No transcript available for this video: {str(e2)}")
 
-            # Fallback to any available transcript
-            if not transcript:
-                transcript = transcript_list.find_generated_transcript(['en', 'fr'])
-                language_used = transcript.language_code
+            if not transcript_data:
+                raise Exception("No transcript available for this video")
 
-            # Fetch transcript data
-            transcript_data = transcript.fetch()
+            # Convert transcript objects to dicts
+            segments = []
+            for segment in transcript_data:
+                segments.append({
+                    'text': segment.text,
+                    'start': segment.start,
+                    'duration': segment.duration
+                })
 
-            # Combine all text segments
-            full_text = " ".join([entry['text'] for entry in transcript_data])
+            logger.info(f"Successfully fetched transcript ({len(segments)} segments)")
 
-            # Calculate duration
-            if transcript_data:
-                duration = transcript_data[-1]['start'] + transcript_data[-1]['duration']
-            else:
-                duration = 0
-
-            logger.info(f"Successfully fetched transcript ({len(full_text)} chars)")
-
-            return {
-                "video_id": video_id,
-                "transcript": full_text,
-                "segments": transcript_data,
-                "language": language_used,
-                "duration_seconds": duration,
-                "word_count": len(full_text.split())
-            }
+            return segments
 
         except Exception as e:
             logger.error(f"Failed to get transcript for {youtube_url}: {str(e)}")

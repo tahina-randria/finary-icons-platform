@@ -65,6 +65,12 @@ export interface ConceptExtraction {
   context?: string;
 }
 
+export interface TranscriptSegment {
+  text: string;
+  start: number;
+  duration: number;
+}
+
 export interface GenerationTask {
   task_id: string;
   status: GenerationStatus;
@@ -76,6 +82,8 @@ export interface GenerationTask {
   error?: string;
   extracted_concepts?: ConceptExtraction[];
   generated_icons?: string[];
+  transcript?: TranscriptSegment[];
+  transcript_text?: string;
   metadata?: Record<string, any>;
 }
 

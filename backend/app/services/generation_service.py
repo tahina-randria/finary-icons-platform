@@ -2,23 +2,26 @@
 AI Image Generation Service using Gemini 3 Pro Image (Nano Banana Pro)
 """
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from app.core.config import settings
 from app.core.logging import logger
 from typing import Optional, Dict, Any
 import base64
 from io import BytesIO
+from PIL import Image
 
 
 class GenerationService:
-    """Service for generating icons using AI"""
+    """Service for generating icons using Gemini 3 Pro Image"""
 
     def __init__(self):
         """Initialize Gemini API"""
         if settings.GEMINI_API_KEY:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            logger.info("Gemini API configured")
+            self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            logger.info("Gemini 3 Pro Image client configured")
         else:
+            self.client = None
             logger.warning("Gemini API key not configured")
 
     def _build_prompt(
@@ -28,32 +31,13 @@ class GenerationService:
         category: Optional[str] = None
     ) -> str:
         """
-        Build detailed prompt for icon generation
+        Build detailed prompt for icon generation using Finary's exact style
         NO GROUND REFLECTION as specified
         """
-        base_prompt = f"""Create a high-quality 3D icon representing: {concept}
+        # Using the final optimized Finary prompt template
+        prompt = f"""3D {concept}, minimalist geometric sculptural form, translucent crystal glass material, semi-transparent blue glass #8DADFF with inner light showing through, smooth satin surface finish, warm amber-peach internal glow #F1C086 visible through the glass from behind, deep navy blue #2D4A6B in shadowed areas, bright white-blue highlights on top edges, glass subsurface scattering effect, simplified iconic shape, dynamic three-quarter angle view from slightly above, soft warm backlight creating internal glow, cool front key lighting, solid pure black background #000000, single floating isolated object centered in frame, no outline, no external glow, no bloom, no ground plane, no reflection, no shadow on background, clean UI icon aesthetic, professional CGI render, octane render, 8k resolution"""
 
-Style requirements:
-- Finary aesthetic: Glass morphism with depth and dimension
-- Modern, minimalist, professional design
-- Smooth gradients and subtle lighting
-- Clean edges with slight rounded corners
-- Floating in space with soft ambient lighting
-- NO GROUND REFLECTION
-- NO SHADOWS ON GROUND
-- Transparent or solid color background only
-
-Visual characteristics:
-- Central composition, well-balanced
-- Appropriate color scheme for {category if category else 'the concept'}
-- Depth through layering and subtle 3D effects
-- Professional icon suitable for financial/business context
-- High detail and polish
-- PNG format with transparency
-
-The icon should be instantly recognizable and work well at various sizes."""
-
-        return base_prompt
+        return prompt
 
     def _build_animation_prompt(
         self,
@@ -88,40 +72,39 @@ Style: Professional, elegant, understated"""
         size: str = "2048x2048"
     ) -> Dict[str, Any]:
         """
-        Generate icon using Gemini 3 Pro Image
+        Generate icon using Gemini 3 Pro Image (Nano Banana Pro)
 
         Returns:
             Dict with image_data (base64), prompt, and animation_prompt
         """
+        if not self.client:
+            raise Exception("Gemini client not initialized")
+
         try:
             prompt = self._build_prompt(concept, style, category)
             animation_prompt = self._build_animation_prompt(concept, style)
 
             logger.info(f"Generating icon for concept: {concept}")
 
-            # Parse size
-            width, height = map(int, size.split("x"))
-
-            # Generate image using Gemini
-            # Note: Using imagen-3.0-generate-001 (Nano Banana Pro)
-            model = genai.GenerativeModel("imagen-3.0-generate-001")
-
-            response = model.generate_images(
-                prompt=prompt,
-                number_of_images=1,
-                aspect_ratio="1:1",
-                safety_filter_level="block_only_high",
-                person_generation="allow_adult"
+            # Generate image using Gemini 2.5 Flash Image (Nano Banana)
+            # Note: gemini-3-pro-image-preview has quota issues, using 2.5 instead
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash-image",  # Gemini 2.5 Flash Image (Nano Banana)
+                contents=[prompt],
             )
 
-            if not response.images:
-                raise Exception("No images generated")
+            # Extract generated image from response
+            image_bytes = None
+            for part in response.parts:
+                if part.inline_data is not None:
+                    # Get raw image bytes directly from inline_data
+                    image_bytes = part.inline_data.data
+                    break
 
-            # Get first image
-            image = response.images[0]
+            if image_bytes is None:
+                raise Exception("No image generated by Gemini")
 
-            # Convert to base64
-            image_bytes = image._pil_image.tobytes() if hasattr(image, '_pil_image') else image.data
+            # Convert bytes to base64
             image_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
             logger.info(f"Successfully generated icon for: {concept}")
@@ -138,6 +121,39 @@ Style: Professional, elegant, understated"""
         except Exception as e:
             logger.error(f"Failed to generate icon for {concept}: {str(e)}")
             raise
+
+    async def generate_icon_from_concept(
+        self,
+        concept: str,
+        category: Optional[str] = None,
+        visual_description: Optional[str] = None
+    ) -> Optional[bytes]:
+        """
+        Generate icon from concept and return raw image bytes
+
+        Args:
+            concept: The concept name to generate
+            category: Optional category
+            visual_description: Optional detailed visual description (not used with template)
+
+        Returns:
+            Image bytes or None if generation fails
+        """
+        try:
+            result = await self.generate_icon(
+                concept=concept,
+                category=category
+            )
+
+            if result and "image_data" in result:
+                # Convert base64 back to bytes
+                return base64.b64decode(result["image_data"])
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to generate icon from concept {concept}: {str(e)}")
+            return None
 
     async def generate_icon_batch(
         self,
