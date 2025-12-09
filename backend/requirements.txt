@@ -25,7 +25,7 @@ youtube-transcript-api==0.6.2
 
 # Utils
 python-dotenv==1.0.0
-httpx==0.26.0
+httpx==0.24.1
 aiofiles==23.2.1
 
 # Background tasks
@@ -36,7 +36,6 @@ redis==5.0.1
 pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
-httpx==0.26.0
 
 # Logging
 loguru==0.7.2
