@@ -75,21 +75,38 @@ class YouTubeService:
 
             logger.info(f"Fetching transcript for video: {video_id}")
 
-            # Try to fetch transcript in preferred languages
-            transcript_data = None
-            language_used = None
-
+            # Try to fetch transcript
+            # First, list all available transcripts to find the best match
             try:
-                transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
-                language_used = languages[0]
-                logger.info(f"Got transcript in preferred languages")
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+                # Try to get transcript in preferred languages
+                transcript_data = None
+                for lang in languages:
+                    try:
+                        transcript_data = transcript_list.find_transcript([lang]).fetch()
+                        logger.info(f"Got transcript in {lang}")
+                        break
+                    except:
+                        continue
+
+                # If no preferred language found, get any available transcript
+                if not transcript_data:
+                    try:
+                        # Get the first available transcript
+                        available_transcripts = list(transcript_list)
+                        if available_transcripts:
+                            transcript_data = available_transcripts[0].fetch()
+                            logger.info(f"Got transcript in {available_transcripts[0].language}")
+                    except:
+                        pass
+
             except Exception as e:
-                logger.warning(f"Could not get transcript in {languages}: {str(e)}")
-                # Try without language specification (auto-detect)
+                logger.warning(f"Could not list transcripts: {str(e)}")
+                # Fallback to simple get_transcript
                 try:
-                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id)
-                    language_used = "auto"
-                    logger.info("Got auto-detected transcript")
+                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
+                    logger.info(f"Got transcript using fallback method")
                 except Exception as e2:
                     raise Exception(f"No transcript available for this video: {str(e2)}")
 
