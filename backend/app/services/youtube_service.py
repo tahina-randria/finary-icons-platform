@@ -75,48 +75,44 @@ class YouTubeService:
 
             logger.info(f"Fetching transcript for video: {video_id}")
 
-            # Try to fetch transcript
-            # First, list all available transcripts to find the best match
-            try:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # Create API instance (v1.2.3 uses instance methods)
+            api = YouTubeTranscriptApi()
 
-                # Try to get transcript in preferred languages
-                transcript_data = None
+            # Try to fetch transcript in preferred languages
+            transcript_data = None
+            try:
+                transcript_data = api.fetch(video_id, languages)
+                logger.info(f"Got transcript in preferred languages")
+            except Exception as e:
+                logger.warning(f"Could not get transcript in {languages}: {str(e)}")
+                # Try with just the first language
                 for lang in languages:
                     try:
-                        transcript_data = transcript_list.find_transcript([lang]).fetch()
+                        transcript_data = api.fetch(video_id, [lang])
                         logger.info(f"Got transcript in {lang}")
                         break
                     except:
                         continue
 
-                # If no preferred language found, get any available transcript
+                # If still no transcript, raise error
                 if not transcript_data:
-                    try:
-                        # Get the first available transcript
-                        available_transcripts = list(transcript_list)
-                        if available_transcripts:
-                            transcript_data = available_transcripts[0].fetch()
-                            logger.info(f"Got transcript in {available_transcripts[0].language}")
-                    except:
-                        pass
-
-            except Exception as e:
-                logger.warning(f"Could not list transcripts: {str(e)}")
-                # Fallback to simple get_transcript
-                try:
-                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
-                    logger.info(f"Got transcript using fallback method")
-                except Exception as e2:
-                    raise Exception(f"No transcript available for this video: {str(e2)}")
+                    raise Exception(f"No transcript available for this video in languages {languages}")
 
             if not transcript_data:
                 raise Exception("No transcript available for this video")
 
-            # transcript_data is already a list of dicts with 'text', 'start', 'duration' keys
-            logger.info(f"Successfully fetched transcript ({len(transcript_data)} segments)")
+            # Convert FetchedTranscriptSnippet objects to dicts
+            segments = []
+            for segment in transcript_data:
+                segments.append({
+                    'text': segment.text,
+                    'start': segment.start,
+                    'duration': segment.duration
+                })
 
-            return transcript_data
+            logger.info(f"Successfully fetched transcript ({len(segments)} segments)")
+
+            return segments
 
         except Exception as e:
             logger.error(f"Failed to get transcript for {youtube_url}: {str(e)}")
