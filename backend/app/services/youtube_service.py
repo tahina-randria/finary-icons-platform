@@ -75,22 +75,19 @@ class YouTubeService:
 
             logger.info(f"Fetching transcript for video: {video_id}")
 
-            # Create API instance
-            api = YouTubeTranscriptApi()
-
             # Try to fetch transcript in preferred languages
             transcript_data = None
             language_used = None
 
             try:
-                transcript_data = api.fetch(video_id, languages=languages)
+                transcript_data = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
                 language_used = languages[0]
                 logger.info(f"Got transcript in preferred languages")
             except Exception as e:
                 logger.warning(f"Could not get transcript in {languages}: {str(e)}")
                 # Try without language specification (auto-detect)
                 try:
-                    transcript_data = api.fetch(video_id)
+                    transcript_data = YouTubeTranscriptApi.get_transcript(video_id)
                     language_used = "auto"
                     logger.info("Got auto-detected transcript")
                 except Exception as e2:
@@ -99,18 +96,10 @@ class YouTubeService:
             if not transcript_data:
                 raise Exception("No transcript available for this video")
 
-            # Convert transcript objects to dicts
-            segments = []
-            for segment in transcript_data:
-                segments.append({
-                    'text': segment.text,
-                    'start': segment.start,
-                    'duration': segment.duration
-                })
+            # transcript_data is already a list of dicts with 'text', 'start', 'duration' keys
+            logger.info(f"Successfully fetched transcript ({len(transcript_data)} segments)")
 
-            logger.info(f"Successfully fetched transcript ({len(segments)} segments)")
-
-            return segments
+            return transcript_data
 
         except Exception as e:
             logger.error(f"Failed to get transcript for {youtube_url}: {str(e)}")
