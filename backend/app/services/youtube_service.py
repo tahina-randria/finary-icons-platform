@@ -78,25 +78,21 @@ class YouTubeService:
             # Create API instance (v1.2.3 uses instance methods)
             api = YouTubeTranscriptApi()
 
-            # Try to fetch transcript in preferred languages
+            # Try to fetch transcript one language at a time
+            # (v1.2.3 doesn't handle multiple languages well)
             transcript_data = None
-            try:
-                transcript_data = api.fetch(video_id, languages)
-                logger.info(f"Got transcript in preferred languages")
-            except Exception as e:
-                logger.warning(f"Could not get transcript in {languages}: {str(e)}")
-                # Try with just the first language
-                for lang in languages:
-                    try:
-                        transcript_data = api.fetch(video_id, [lang])
-                        logger.info(f"Got transcript in {lang}")
-                        break
-                    except:
-                        continue
+            for lang in languages:
+                try:
+                    transcript_data = api.fetch(video_id, [lang])
+                    logger.info(f"Got transcript in {lang}")
+                    break
+                except Exception as e:
+                    logger.warning(f"Could not get transcript in {lang}: {str(e)}")
+                    continue
 
-                # If still no transcript, raise error
-                if not transcript_data:
-                    raise Exception(f"No transcript available for this video in languages {languages}")
+            # If still no transcript, raise error
+            if not transcript_data:
+                raise Exception(f"No transcript available for this video in languages {languages}")
 
             if not transcript_data:
                 raise Exception("No transcript available for this video")
