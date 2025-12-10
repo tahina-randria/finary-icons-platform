@@ -17,7 +17,7 @@ opencv-python-headless==4.9.0.80
 numpy==1.26.3
 
 # Database & Storage
-supabase==2.3.0
+supabase==2.9.0
 asyncpg==0.29.0
 
 # YouTube
