@@ -17,7 +17,7 @@ opencv-python-headless==4.9.0.80
 numpy==1.26.3
 
 # Database & Storage
-supabase==2.9.0
+supabase>=2.3.0,<3.0.0
 asyncpg==0.29.0
 
 # YouTube
@@ -25,7 +25,7 @@ youtube-transcript-api==0.6.2
 
 # Utils
 python-dotenv==1.0.0
-httpx==0.24.1
+httpx>=0.24.0,<0.28.0
 aiofiles==23.2.1
 
 # Background tasks
