@@ -86,10 +86,9 @@ Style: Professional, elegant, understated"""
 
             logger.info(f"Generating icon for concept: {concept}")
 
-            # Generate image using Gemini 2.5 Flash Image (Nano Banana)
-            # Note: gemini-3-pro-image-preview has quota issues, using 2.5 instead
+            # Generate image using Gemini 3 Pro Image
             response = self.client.models.generate_content(
-                model="gemini-2.5-flash-image",  # Gemini 2.5 Flash Image (Nano Banana)
+                model="gemini-3-pro-image-preview",  # Gemini 3 Pro Image
                 contents=[prompt],
             )
 
