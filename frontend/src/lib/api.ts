@@ -18,7 +18,7 @@ class APIClient {
   constructor() {
     this.client = axios.create({
       baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-      timeout: 30000,
+      timeout: 300000, // 5 minutes for YouTube generation
       headers: {
         'Content-Type': 'application/json',
       },
