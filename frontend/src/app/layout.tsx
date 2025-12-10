@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Finary Icons Platform',
@@ -15,23 +12,23 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr">
-      <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-          <nav className="border-b bg-white/80 backdrop-blur-sm">
+    <html lang="fr" className="dark">
+      <body>
+        <div className="min-h-screen bg-background">
+          <nav className="border-b border-border bg-card/50 backdrop-blur-sm">
             <div className="container mx-auto px-4 py-4">
               <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-2xl font-bold text-primary">
                   Finary Icons
                 </h1>
-                <div className="flex gap-4">
-                  <a href="/" className="text-slate-600 hover:text-slate-900">
+                <div className="flex gap-6">
+                  <a href="/" className="text-foreground hover:text-primary transition-colors">
                     Accueil
                   </a>
-                  <a href="/icons" className="text-slate-600 hover:text-slate-900">
+                  <a href="/icons" className="text-foreground hover:text-primary transition-colors">
                     Icônes
                   </a>
-                  <a href="/generate" className="text-slate-600 hover:text-slate-900">
+                  <a href="/generate" className="text-foreground hover:text-primary transition-colors">
                     Générer
                   </a>
                 </div>
